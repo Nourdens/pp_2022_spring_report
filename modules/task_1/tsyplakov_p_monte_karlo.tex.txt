@@ -1,0 +1,1076 @@
+\documentclass{report}
+
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{luainputenc}
+\usepackage[english, russian]{babel}
+\usepackage[pdftex]{hyperref}
+\usepackage[14pt]{extsizes}
+\usepackage{color}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{indentfirst}
+
+\usepackage{listings}
+\usepackage{xcolor}
+
+%New colors defined below
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+%Code listing style named "mystyle"
+\lstdefinestyle{mystyle}{
+  backgroundcolor=\color{backcolour},   commentstyle=\color{codegreen},
+  keywordstyle=\color{magenta},
+  numberstyle=\tiny\color{codegray},
+  stringstyle=\color{codepurple},
+  basicstyle=\ttfamily\footnotesize,
+  breakatwhitespace=false,         
+  breaklines=true,                 
+  captionpos=b,                    
+  keepspaces=true,                 
+  numbers=left,                    
+  numbersep=5pt,                  
+  showspaces=false,                
+  showstringspaces=false,
+  showtabs=false,                  
+  tabsize=2
+}
+
+%"mystyle" code listing set
+\lstset{style=mystyle}
+
+\geometry{a4paper,top=2cm,bottom=3cm,left=2cm,right=1.5cm}
+\setlength{\parskip}{0.5cm}
+\setlist{nolistsep, itemsep=0.3cm,parsep=0pt}
+
+\lstset{language=C++,
+		basicstyle=\footnotesize,
+		keywordstyle=\color{blue}\ttfamily,
+		stringstyle=\color{red}\ttfamily,
+		commentstyle=\color{green}\ttfamily,
+		morecomment=[l][\color{magenta}]{\#}, 
+		tabsize=4,
+		breaklines=true,
+  		breakatwhitespace=true,
+  		title=\lstname,       
+}
+
+\makeatletter
+\renewcommand\@biblabel[1]{#1.\hfil}
+\makeatother
+
+\begin{document}
+
+\begin{titlepage}
+
+\begin{center}
+Министерство науки и высшего образования Российской Федерации
+\end{center}
+
+\begin{center}
+Федеральное государственное автономное образовательное учреждение высшего образования \\
+Национальный исследовательский Нижегородский государственный университет им. Н.И. Лобачевского
+\end{center}
+
+\begin{center}
+Институт информационных технологий, математики и механики
+\end{center}
+
+\vspace{4em}
+
+\begin{center}
+\textbf{\LargeОтчет по лабораторной работе} \\
+\end{center}
+\begin{center}
+\textbf{\Large«Вычисление многомерных интегралов методом Монте-Карло.»} \\
+\end{center}
+
+\vspace{4em}
+
+\newbox{\lbox}
+\savebox{\lbox}{\hbox{text}}
+\newlength{\maxl}
+\setlength{\maxl}{\wd\lbox}
+\hfill\parbox{7cm}{
+\hspace*{5cm}\hspace*{-5cm}\textbf{Выполнил:} \\ студент группы 381906-3 \\ Цыплаков П. М.\\
+\\
+\hspace*{5cm}\hspace*{-5cm}\textbf{Проверил:}\\ доцент кафедры МОСТ, \\ кандидат технических наук \\ Сысоев А. В.\\
+}
+\vspace{\fill}
+
+\begin{center} Нижний Новгород \\ 2022 \end{center}
+
+\end{titlepage}
+
+\setcounter{page}{2}
+
+% Содержание
+\tableofcontents
+\newpage
+
+% Введение
+\section*{Введение}
+\addcontentsline{toc}{section}{Введение}
+Интеграл - одно из важнейших понятий математического анализа, которое возникает при решении множества физических и математических задач. 
+\par Упрощенно интеграл можно представить как сумму для бесконечного числа бесконечно малых слагаемых. 
+/par В большинстве случаев не существует явного алгоритма нахождения точного значения определенного интеграла, поэтому используются численные методы, находящие приближенное значение, одним из которых является метод Монте-Карло.
+\par В данной лабораторной работе рассматривается вычисление определенного интеграла в многомерном пространстве методом Монте-Карло.
+\newpage
+
+% Постановка задачи
+\section*{Постановка задачи}
+\addcontentsline{toc}{section}{Постановка задачи}
+Необходимо реализовать последовательную и параллельную версию алгоритма для вычисления многомерного интеграла методом Монте-Карло, проверить корректность вычислений, провести эксперименты для оценки эффективности параллельной схемы. По полученным результатам сделать выводы.
+\par Для реализации параллельных версий необходимо использовать стандарт OpenMP, библиотеку Intel TBB, а также стандартную библиотеку программирования C++. Для проверки корректности работы алгоритмов использовать Google Testing Framework.
+\newpage
+
+% Описание алгоритма
+\section*{Описание алгоритма}
+\addcontentsline{toc}{section}{Описание алгоритма}
+Интеграл вычисляется \[ \int^{(b_1, \dots, b_k)}_{(a_1, \dots, a_k)} f(u_i) du_i =  \frac{(b_i - a_i)^n}{N} \sum\limits_{i=1}^{n} f(u_i)\] где \( (a_1, \dots, a_k), (b_1, \dots, b_k) \) - пределы интегрирования, \(u_i = (x_1, \dots, x_n\) - аргументы функции для каждого измерения.
+\par Итак, в данном методе бросается N равномерно распределенных точек на отрезке \( [a_i, b_i]\) для каждой точки \( u_i\), вычисляется \(f(u_i)\). Далее берется выборочное среднее и получается примерная оценка интеграла по формуле выше.
+\newpage
+
+% Схема распараллеливания
+\section*{Схема распараллеливания}
+\addcontentsline{toc}{section}{Схема распараллеливания}
+В нашем алгоритме наиболее трудозатно - это генерировать точки, потому будет параллелиться именно этот участок. Так как мы заранее знаем количество точек, которое будет случайно выбираться, то каждому из потоков будет выделена равная часть точек, с которыми он будет работать.
+
+Каждый из потоков будет генерировать точки, далее складывать их в общий вектор для последующего вычисления значения алгоритма.
+\newpage
+
+% Описание программной реализации
+\section*{Описание программной реализации}
+\addcontentsline{toc}{section}{Описание программной реализации}
+\par Каждая версия программы состоит из заголовочного файла \emph{monte\_karlo.cpp} и двух файлов исходного кода \emph{monte\_karlo.h} и \emph{main.cpp}.
+\par В заголовочном файле находятся объявления функций для вычисления многомерного интеграла методом Монте-Карло - последовательного и параллельного, в файле\break \emph{monte\_karlo.cpp} - реализации данных функций, в файле \emph{main.cpp} - модульные тесты, проверяющие корректность и время работы программы.
+\par Прототип функции для последовательной версии алгоритма:
+\begin{lstlisting}
+  double getSequentialMonteKarlo(
+    std::function<double(std::vector<double>)> const& integrableFunction,
+    const std::vector<double>& upperLimit,
+    const std::vector<double>& lowerLimit,
+    const int amountOfPoint);
+\end{lstlisting}
+\par Прототип функции для параллельных версий алгоритма:
+\begin{lstlisting}
+  double getParallelMonteKarlo(
+    std::function<double(std::vector<double>)> const& integrableFunction,
+    const std::vector<double>& upperLimit,
+    const std::vector<double>& lowerLimit,
+    const int amountOfPoint);
+\end{lstlisting}
+\par Параметр integrableFunction - содержит в себе интегрируемую функцию, lowerLimit - массив нижних границ интегрирования \( (a_1, \dots, a_n) \), upperLimit - массив верхних границ интегрирования \( (b_1, \dots, b_n) \), amountOfPoint - количество точек, которые мы генерируем для вычисления интеграла.
+
+\newpage
+
+% Подтверждение корректности
+\section*{Подтверждение корректности}
+\addcontentsline{toc}{section}{Подтверждение корректности}
+Для подтверждения корректности в программе представлен набор тестов, разработанных с Google Testing Framework.
+\par Набор представляет из себя тесты, которые проверяют корректность сортировки, а также эффективность работы параллельной версии.
+\par Успешное прохождение всех тестов подтверждает корректность работы написанной программы.
+\newpage
+
+% Результаты экспериментов
+\section*{Результаты экспериментов}
+\addcontentsline{toc}{section}{Результаты экспериментов}
+Эксперименты для оценки эффективности проводились на ПК со следующими характеристиками:
+
+\begin{itemize}
+\item Процессор: Intel Core i5-10210U, 1.60 GHz, 4 ядра, 4 логических процессора;
+\item Оперативная память: 24 ГБ;
+\item ОС: Microsoft Windows 10 Home.
+\end{itemize}
+
+\par Для проведения экспериментов производилась поразрядная сортировка для вещественных чисел (тип double) с четно-нечетным слиянием Бэтчера над миллионом элементов.
+
+\begin{table}[!h]
+\caption{Результаты экспериментов. Сравнение с OpenMP}
+\centering
+\begin{tabular}{lllll}
+Номер функции & Последовательно & Параллельно & Ускорение \\
+1 & 1,39765 & 0,418448 & 0,979202 \\
+2 & 1,74176 & 0,677033 & 1,064727 \\
+3 & 2,2054 & 0,923599 & 1,281801 \\
+4 & 2,67638 & 1,16319 & 1,51319 \\
+5 & 5,24256 & 2,52421 & 2,71835
+\end{tabular}
+\end{table}
+
+\begin{table}[!h]
+\caption{Результаты экспериментов. Сравнение с TBB}
+\centering
+\begin{tabular}{lllll}
+Номер функции & Последовательно & Параллельно & Ускорение \\
+1 & 0,689714 & 0,212303 & 0,477411 \\
+2 & 0,794179 & 0,295677 & 0,498502 \\
+3 & 1,08499 & 0,430746 & 0,654244 \\
+4 & 1,49589 & 0,544081 & 0,951809 \\
+5 & 5,17268 & 2,27746 & 2,89522
+\end{tabular}
+\end{table}
+
+\begin{table}[!h]
+\caption{Результаты экспериментов. Сравнение с std::thread}
+\centering
+\begin{tabular}{lllll}
+1 & 1,22137 & 0,446387 & 0,774983 \\
+2 & 1,84721 & 0,61472 & 1,23249 \\
+3 & 5,12527 & 1,2158 & 3,90947 \\
+4 & 4,52679 & 1,78663 & 2,74016 \\
+5 & 10,7817 & 4,34238 & 6,43932
+\end{tabular}
+\end{table}
+
+\par Из данных, полученных в результате экспериментов, можно сделать вывод о том, что в большинстве случаев параллельные версии алгоритма работают быстрее последовательной, причем в среднем версия TBB оказывается наиболее эффективной, версия std::thread - наименее эффективной. Это объясняется тем, что в TBB реализована эффективная динамическая схема расщепления итерационного пространства, а в std::thread необходимо не только явно создавать потоки, но и предварительно вычислять дополнительные параметры для их работы. Также заметно, что эффективность программы зависит от начальных параметров задачи - самой функции и количества интервалов разбиения, и что ускорение параллельных версий меньше числа работающих потоков, так как в системе существует конкуренция с другими запущенными процессами, что не позволяет исполняться одновременно всем запущенным потокам.
+\newpage
+
+% Заключение
+\section*{Заключение}
+\addcontentsline{toc}{section}{Заключение}
+В ходе выполнения лабораторной работы были разработаны последовательная и параллельная реализации алгоритма вычисления многомерных интегралов методом Монте-Карло.
+\par Задача работы была успешно достигнута, поскольку результаты проведенных экспериментов по оценке эффективности показывают, что параллельная реализация работает быстрее, чем последовательная.
+\par Кроме того, были написаны тесты с использованием Google Testing Framework, необходимые для подтверждения корректности работы программы.
+\newpage
+
+% Список литературы
+\begin{thebibliography}{1}
+\addcontentsline{toc}{section}{Список литературы}
+\item Метод Монте-Карло (дата обращения: 1.05.2022) \newline URL: \url {https://en.wikipedia.org/wiki/Monte_Carlo_method} 
+\item Кнут Д. Искусство программирования, т.3. Сортировка и поиск. 2-е издание. – М.: Вильямс, 2009 . – 824 С.
+\item Определённый интеграл // Википедия. [2022]. Дата обновления: 20.03.2022. URL: \url{https://ru.wikipedia.org/?curid=590246&oldid=120772690} (дата обращения: 2.05.2022).
+\item OpenMP Library Reference | Microsoft Docs // Microsoft. [2022]. \url{https://docs.microsoft.com/en-us/cpp/parallel/openmp/reference/openmp-library-reference} (дата обращения: 5.05.2022).
+\item std::thread - cppreference.com // cppreference.com. [2022]. \url{https://en.cppreference.com/w/cpp/thread/thread} (дата обращения: 2.05.2022).
+\end{thebibliography}
+\newpage
+
+% Приложение
+\section*{Приложение}
+\addcontentsline{toc}{section}{Приложение}
+\par 1.1 Последовательная реализация. Файл: monte\_karlo.h
+ \begin{lstlisting}[language=C++]
+ // Copyright 2022 Tsyplakov Pavel
+#ifndef MODULES_TASK_1_TSYPLAKOV_P_MONTE_KARLO_MONTE_KARLO_H_
+#define MODULES_TASK_1_TSYPLAKOV_P_MONTE_KARLO_MONTE_KARLO_H_
+
+#include <functional>
+#include <vector>
+
+double getSequentialMonteKarlo(
+    std::function<double(std::vector<double>)> const& integrableFunction,
+    const std::vector<double>& upperLimit,
+    const std::vector<double>& lowerLimit,
+    const int amountOfPoint);
+
+#endif  // MODULES_TASK_1_TSYPLAKOV_P_MONTE_KARLO_MONTE_KARLO_H_
+ \end{lstlisting}
+
+\par 1.2 Последовательная реализация. Файл: monte\_karlo.cpp
+ \begin{lstlisting}[language=C++]
+// Copyright 2022 Tsyplakov Pavel
+#include "../../../modules/task_1/tsyplakov_p_monte_karlo/monte_karlo.h"
+#include <functional>
+#include <random>
+#include <vector>
+
+using std::exception;
+using std::function;
+using std::vector;
+
+double getSequentialMonteKarlo(
+    function<double(vector<double>)> const& integrableFunction,
+    const vector<double>& upperLimit,
+    const vector<double>& lowerLimit,
+    const int amountOfPoint) {
+  if (upperLimit.size() == 0 || lowerLimit.size() == 0 ||
+      upperLimit.size() != lowerLimit.size()) {
+    throw "Wrong limit!";
+  }
+
+  double result = 0.0;
+  auto integrableDimensions = upperLimit.size();
+
+  vector<std::uniform_real_distribution<double>> distributions(
+      integrableDimensions);
+  for (unsigned int counter = 0; counter < integrableDimensions; ++counter) {
+    distributions[counter] = std::uniform_real_distribution<double>(
+        lowerLimit[counter], upperLimit[counter]);
+  }
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+
+  vector<double> randomPoints(integrableDimensions);
+  for (int counter = 0; counter < amountOfPoint; ++counter) {
+    for (unsigned int i = 0; i < integrableDimensions; ++i) {
+      randomPoints[i] = distributions[i](gen);
+    }
+
+    result += integrableFunction(randomPoints);
+  }
+
+  double partialResult = 1.0;
+  for (unsigned int counter = 0; counter < integrableDimensions; ++counter) {
+    partialResult *= upperLimit[counter] - lowerLimit[counter];
+  }
+
+  result *= (partialResult / amountOfPoint);
+  return result;
+}
+
+ \end{lstlisting}
+\par 1.3 Последовательная реализация. Файл: main.cpp
+ \begin{lstlisting}[language=C++]
+ // Copyright 2022 Tsyplakov Pavel
+#include <gtest/gtest.h>
+#include <math.h>
+#include <vector>
+#include "./monte_karlo.h"
+
+const int amountOfPoints = 10000;
+
+TEST(MonteKarloSequential, Test_X_On_Y) {
+  std::vector<double> upperLimit = {2, 5};
+  std::vector<double> lowerLimit = {1, 3};
+
+  auto result =
+      getSequentialMonteKarlo([](std::vector<double> x) { return x[0] * x[1]; },
+                              upperLimit, lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(result, 12, 4);
+}
+
+TEST(MonteKarloSequential, Test_Sin_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  auto result =
+      getSequentialMonteKarlo([](std::vector<double> x) { return sin(x[0]); },
+                              upperLimit, lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(result, 1.38, 2);
+}
+
+TEST(MonteKarloSequential, Test_Cos_X_On_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  auto result = getSequentialMonteKarlo(
+      [](std::vector<double> x) { return cos(x[0]) * x[0]; }, upperLimit,
+      lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(result, -7.66, 4);
+}
+
+TEST(MonteKarloSequential, Test_Cos_X_On_Sin_X_On_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  auto result = getSequentialMonteKarlo(
+      [](std::vector<double> x) { return cos(x[0]) * sin(x[0]) * x[0]; },
+      upperLimit, lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(result, -1.12, 2);
+}
+
+TEST(MonteKarloSequential, Test_Cos_X_On_Sin_X_On_Sin_X_On_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  auto result = getSequentialMonteKarlo(
+      [](std::vector<double> x) {
+        return cos(x[0]) * sin(x[0]) * sin(x[0]) * x[0];
+      },
+      upperLimit, lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(result, -1.1, 2);
+}
+ \end{lstlisting}
+\par 2.1 Параллельная реализация OpenMP. Файл: monte\_karlo.h
+
+\begin{lstlisting}[language=C++]
+// Copyright 2022 Tsyplakov Pavel
+#ifndef MODULES_TASK_2_TSYPLAKOV_P_MONTE_KARLO_MONTE_KARLO_H_
+#define MODULES_TASK_2_TSYPLAKOV_P_MONTE_KARLO_MONTE_KARLO_H_
+
+#include <functional>
+#include <vector>
+
+double getSequentialMonteKarlo(
+    std::function<double(std::vector<double>)> const& integrableFunction,
+    const std::vector<double>& upperLimit,
+    const std::vector<double>& lowerLimit,
+    const int amountOfPoint);
+
+double getParallelMonteKarlo(
+    std::function<double(std::vector<double>)> const& integrableFunction,
+    const std::vector<double>& upperLimit,
+    const std::vector<double>& lowerLimit,
+    const int amountOfPoint);
+
+#endif  // MODULES_TASK_2_TSYPLAKOV_P_MONTE_KARLO_MONTE_KARLO_H_
+
+\end{lstlisting}
+
+\par 2.2 Параллельная реализация OpenMP. Файл: monte\_karlo.cpp
+
+\begin{lstlisting}[language=C++]
+// Copyright 2022 Tsyplakov Pavel
+#include "../../../modules/task_2/tsyplakov_p_monte_karlo/monte_karlo.h"
+#include <omp.h>
+#include <exception>
+#include <functional>
+#include <random>
+#include <vector>
+
+using std::exception;
+using std::function;
+using std::vector;
+
+double getSequentialMonteKarlo(
+    function<double(vector<double>)> const& integrableFunction,
+    const vector<double>& upperLimit,
+    const vector<double>& lowerLimit,
+    const int amountOfPoint) {
+  if (upperLimit.size() == 0 || lowerLimit.size() == 0 ||
+      upperLimit.size() != lowerLimit.size()) {
+    throw "Wrong limit!";
+  }
+
+  double result = 0.0;
+  auto integrableDimensions = upperLimit.size();
+
+  vector<std::uniform_real_distribution<double>> distributions(
+      integrableDimensions);
+  for (unsigned int counter = 0; counter < integrableDimensions; ++counter) {
+    distributions[counter] = std::uniform_real_distribution<double>(
+        lowerLimit[counter], upperLimit[counter]);
+  }
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+
+  vector<double> randomPoints(integrableDimensions);
+  for (int counter = 0; counter < amountOfPoint; ++counter) {
+    for (unsigned int i = 0; i < integrableDimensions; ++i) {
+      randomPoints[i] = distributions[i](gen);
+    }
+
+    result += integrableFunction(randomPoints);
+  }
+
+  double partialResult = 1.0;
+  for (unsigned int counter = 0; counter < integrableDimensions; ++counter) {
+    partialResult *= upperLimit[counter] - lowerLimit[counter];
+  }
+
+  result *= (partialResult / amountOfPoint);
+  return result;
+}
+
+double getParallelMonteKarlo(
+    std::function<double(std::vector<double>)> const& integrableFunction,
+    const std::vector<double>& upperLimit,
+    const std::vector<double>& lowerLimit,
+    const int amountOfPoint) {
+  if (upperLimit.size() == 0 || lowerLimit.size() == 0 ||
+      upperLimit.size() != lowerLimit.size()) {
+    throw "Wrong limit!";
+  }
+
+  double reductionResult = 0.0;
+  auto integrableDimensions = upperLimit.size();
+
+  vector<std::uniform_real_distribution<double>> distributions(
+      integrableDimensions);
+  for (unsigned int counter = 0; counter < integrableDimensions; ++counter) {
+    distributions[counter] = std::uniform_real_distribution<double>(
+        lowerLimit[counter], upperLimit[counter]);
+  }
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+
+  vector<double> randomPoints(integrableDimensions);
+#pragma omp parallel for firstprivate(randomPoints) reduction(+ : reductionResult)
+  for (int counter = 0; counter < amountOfPoint; ++counter) {
+    for (unsigned int i = 0; i < integrableDimensions; ++i) {
+      randomPoints[i] = distributions[i](gen);
+    }
+
+    reductionResult += integrableFunction(randomPoints);
+  }
+
+  double partialResult = 1.0;
+  for (unsigned int counter = 0; counter < integrableDimensions; ++counter) {
+    partialResult *= upperLimit[counter] - lowerLimit[counter];
+  }
+
+  reductionResult *= (partialResult / amountOfPoint);
+  return reductionResult;
+}
+
+\end{lstlisting}
+
+\par 2.3 Параллельная реализация OpenMP. Файл: main.сpp
+
+\begin{lstlisting}[language=C++]
+// Copyright 2022 Tsyplakov Pavel
+#include <gtest/gtest.h>
+#include <math.h>
+#include <functional>
+#include <vector>
+#include "./monte_karlo.h"
+
+const int amountOfPoints = 10000;
+
+TEST(MonteKarloSequential, Test_X_On_Y) {
+  std::vector<double> upperLimit = {2, 5};
+  std::vector<double> lowerLimit = {1, 3};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) { return x[0] * x[1]; };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+TEST(MonteKarloSequential, Test_Sin_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) { return sin(x[0]); };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+TEST(MonteKarloSequential, Test_Cos_X_On_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) { return cos(x[0]) * x[0]; };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+TEST(MonteKarloSequential, Test_Cos_X_On_Sin_X_On_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) { return cos(x[0]) * sin(x[0]) * x[0]; };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+TEST(MonteKarloSequential, Test_Cos_X_On_Sin_X_On_Sin_X_On_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) {
+        return cos(x[0]) * sin(x[0]) * sin(x[0]) * x[0];
+      };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+\end{lstlisting}
+
+\par 3.1 Параллельная реализация TBB. Файл: monte\_karlo.h
+
+\begin{lstlisting}[language=C++]
+// Copyright 2022 Tsyplakov Pavel
+#ifndef MODULES_TASK_3_TSYPLAKOV_P_MONTE_KARLO_MONTE_KARLO_H_
+#define MODULES_TASK_3_TSYPLAKOV_P_MONTE_KARLO_MONTE_KARLO_H_
+
+#include <functional>
+#include <vector>
+
+double getSequentialMonteKarlo(
+    std::function<double(std::vector<double>)> const& integrableFunction,
+    const std::vector<double>& upperLimit,
+    const std::vector<double>& lowerLimit,
+    const int amountOfPoint);
+
+double getParallelMonteKarlo(
+    std::function<double(std::vector<double>)> const& integrableFunction,
+    const std::vector<double>& upperLimit,
+    const std::vector<double>& lowerLimit,
+    const int amountOfPoint);
+
+#endif  // MODULES_TASK_3_TSYPLAKOV_P_MONTE_KARLO_MONTE_KARLO_H_
+
+\end{lstlisting}
+
+\par 3.2 Параллельная реализация TBB. Файл: monte\_karlo.сpp
+
+\begin{lstlisting}[language=C++]
+// Copyright 2022 Tsyplakov Pavel
+#include "../../../modules/task_3/tsyplakov_p_monte_karlo/monte_karlo.h"
+#include <tbb/tbb.h>
+#include <functional>
+#include <random>
+#include <vector>
+
+using std::function;
+using std::vector;
+
+double getSequentialMonteKarlo(
+    function<double(vector<double>)> const& integrableFunction,
+    const vector<double>& upperLimit,
+    const vector<double>& lowerLimit,
+    const int amountOfPoint) {
+  if (upperLimit.size() == 0 || lowerLimit.size() == 0 ||
+      upperLimit.size() != lowerLimit.size()) {
+    throw "Wrong limit!";
+  }
+
+  double result = 0.0;
+  auto integrableDimensions = upperLimit.size();
+
+  vector<std::uniform_real_distribution<double>> distributions(
+      integrableDimensions);
+  for (unsigned int counter = 0; counter < integrableDimensions; ++counter) {
+    distributions[counter] = std::uniform_real_distribution<double>(
+        lowerLimit[counter], upperLimit[counter]);
+  }
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+
+  vector<double> randomPoints(integrableDimensions);
+  for (int counter = 0; counter < amountOfPoint; ++counter) {
+    for (unsigned int i = 0; i < integrableDimensions; ++i) {
+      randomPoints[i] = distributions[i](gen);
+    }
+
+    result += integrableFunction(randomPoints);
+  }
+
+  double partialResult = 1.0;
+  for (unsigned int counter = 0; counter < integrableDimensions; ++counter) {
+    partialResult *= upperLimit[counter] - lowerLimit[counter];
+  }
+
+  result *= (partialResult / amountOfPoint);
+  return result;
+}
+
+double getParallelMonteKarlo(
+    std::function<double(std::vector<double>)> const& integrableFunction,
+    const std::vector<double>& upperLimit,
+    const std::vector<double>& lowerLimit,
+    const int amountOfPoint) {
+  if (upperLimit.size() == 0 || lowerLimit.size() == 0 ||
+      upperLimit.size() != lowerLimit.size()) {
+    throw "Wrong limit!";
+  }
+
+  double reductionResult = 0.0;
+  auto integrableDimensions = upperLimit.size();
+
+  vector<std::uniform_real_distribution<double>> distributions(
+      integrableDimensions);
+  for (unsigned int counter = 0; counter < integrableDimensions; ++counter) {
+    distributions[counter] = std::uniform_real_distribution<double>(
+        lowerLimit[counter], upperLimit[counter]);
+  }
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+
+  reductionResult = tbb::parallel_reduce(
+      tbb::blocked_range<int>(0, amountOfPoint), 0.0,
+      [&](tbb::blocked_range<int> r, double runningResult) {
+        vector<double> randomPoints(integrableDimensions);
+
+        for (int counter = r.begin(); counter < r.end(); ++counter) {
+          for (unsigned int i = 0; i < integrableDimensions; ++i) {
+            randomPoints[i] = distributions[i](gen);
+          }
+          runningResult += integrableFunction(randomPoints);
+        }
+
+        return runningResult;
+      },
+      std::plus<double>());
+
+  double partialResult = 1.0;
+  for (unsigned int counter = 0; counter < integrableDimensions; ++counter) {
+    partialResult *= upperLimit[counter] - lowerLimit[counter];
+  }
+
+  reductionResult *= (partialResult / amountOfPoint);
+  return reductionResult;
+}
+
+\end{lstlisting}
+
+\par 3.3 Параллельная реализация TBB. Файл: main.сpp
+
+\begin{lstlisting}[language=C++]
+// Copyright 2022 Tsyplakov Pavel
+#include <gtest/gtest.h>
+#include <math.h>
+#include <functional>
+#include <vector>
+#include "./monte_karlo.h"
+
+const int amountOfPoints = 10000;
+
+TEST(MonteKarloSequential, Test_X_On_Y) {
+  std::vector<double> upperLimit = {2, 5};
+  std::vector<double> lowerLimit = {1, 3};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) { return x[0] * x[1]; };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+TEST(MonteKarloSequential, Test_Sin_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) { return sin(x[0]); };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+TEST(MonteKarloSequential, Test_Cos_X_On_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) { return cos(x[0]) * x[0]; };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+TEST(MonteKarloSequential, Test_Cos_X_On_Sin_X_On_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) { return cos(x[0]) * sin(x[0]) * x[0]; };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+TEST(MonteKarloSequential, Test_Cos_X_On_Sin_X_On_Sin_X_On_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) {
+        return cos(x[0]) * sin(x[0]) * sin(x[0]) * x[0];
+      };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+\end{lstlisting}
+
+\par 4.1 Параллельная реализация std::threads. Файл: monte\_karlo.h
+
+\begin{lstlisting}[language=C++]
+// Copyright 2022 Tsyplakov Pavel
+#ifndef MODULES_TASK_4_TSYPLAKOV_P_MONTE_KARLO_MONTE_KARLO_H_
+#define MODULES_TASK_4_TSYPLAKOV_P_MONTE_KARLO_MONTE_KARLO_H_
+
+#include <functional>
+#include <vector>
+
+double getSequentialMonteKarlo(
+    std::function<double(std::vector<double>)> const& integrableFunction,
+    const std::vector<double>& upperLimit,
+    const std::vector<double>& lowerLimit,
+    const int amountOfPoint);
+
+double getParallelMonteKarlo(
+    std::function<double(std::vector<double>)> const& integrableFunction,
+    const std::vector<double>& upperLimit,
+    const std::vector<double>& lowerLimit,
+    const int amountOfPoint);
+
+#endif  // MODULES_TASK_4_TSYPLAKOV_P_MONTE_KARLO_MONTE_KARLO_H_
+
+\end{lstlisting}
+
+\par 4.2 Параллельная реализация std::threads. Файл: monte\_karlo.сpp
+
+\begin{lstlisting}[language=C++]
+// Copyright 2022 Tsyplakov Pavel
+#include "../../../modules/task_4/tsyplakov_p_monte_karlo/monte_karlo.h"
+#include <exception>
+#include <functional>
+#include <random>
+#include <utility>
+#include <vector>
+#include "../../../3rdparty/unapproved/unapproved.h"
+
+using std::exception;
+using std::function;
+using std::pair;
+using std::vector;
+
+double getSequentialMonteKarlo(
+    function<double(vector<double>)> const& integrableFunction,
+    const vector<double>& upperLimit,
+    const vector<double>& lowerLimit,
+    const int amountOfPoint) {
+  if (upperLimit.size() == 0 || lowerLimit.size() == 0 ||
+      upperLimit.size() != lowerLimit.size()) {
+    throw "Wrong limit!";
+  }
+
+  double result = 0.0;
+  auto integrableDimensions = upperLimit.size();
+
+  vector<std::uniform_real_distribution<double>> distributions(
+      integrableDimensions);
+  for (unsigned int counter = 0; counter < integrableDimensions; ++counter) {
+    distributions[counter] = std::uniform_real_distribution<double>(
+        lowerLimit[counter], upperLimit[counter]);
+  }
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+
+  vector<double> randomPoints(integrableDimensions);
+  for (int counter = 0; counter < amountOfPoint; ++counter) {
+    for (unsigned int i = 0; i < integrableDimensions; ++i) {
+      randomPoints[i] = distributions[i](gen);
+    }
+
+    result += integrableFunction(randomPoints);
+  }
+
+  double partialResult = 1.0;
+  for (unsigned int counter = 0; counter < integrableDimensions; ++counter) {
+    partialResult *= upperLimit[counter] - lowerLimit[counter];
+  }
+
+  result *= (partialResult / amountOfPoint);
+  return result;
+}
+
+double getParallelMonteKarlo(
+    std::function<double(std::vector<double>)> const& integrableFunction,
+    const std::vector<double>& upperLimit,
+    const std::vector<double>& lowerLimit,
+    const int amountOfPoint) {
+  if (upperLimit.size() == 0 || lowerLimit.size() == 0 ||
+      upperLimit.size() != lowerLimit.size()) {
+    throw "Wrong limit!";
+  }
+
+  double reductionResult = 0.0;
+  auto integrableDimensions = upperLimit.size();
+
+  vector<std::uniform_real_distribution<double>> distributions(
+      integrableDimensions);
+  for (unsigned int counter = 0; counter < integrableDimensions; ++counter) {
+    distributions[counter] = std::uniform_real_distribution<double>(
+        lowerLimit[counter], upperLimit[counter]);
+  }
+
+  int numberThread = std::thread::hardware_concurrency();
+  vector<double> threadsResult(numberThread);
+  std::thread* threads = new std::thread[numberThread];
+  int dataPortion = amountOfPoint / numberThread;
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+
+  for (int i = 0; i < numberThread; ++i) {
+    pair<vector<double>::size_type, vector<double>::size_type> localPoints;
+    if (i != numberThread - 1) {
+      localPoints = {i * dataPortion, (i + 1) * dataPortion};
+    } else {
+      localPoints = {i * dataPortion, amountOfPoint};
+    }
+
+    threads[i] = std::thread(
+        [&](const pair<vector<double>::size_type, vector<double>::size_type>&
+                local,
+            const int currentThread) {
+          vector<double> randomPoints(integrableDimensions);
+          for (auto counter = local.first; counter < local.second; ++counter) {
+            for (unsigned int i = 0; i < integrableDimensions; ++i) {
+              randomPoints[i] = distributions[i](gen);
+            }
+            threadsResult[currentThread] += integrableFunction(randomPoints);
+          }
+        },
+        localPoints, i);
+  }
+
+  for (int i = 0; i < numberThread; ++i) {
+    threads[i].join();
+    reductionResult += threadsResult[i];
+  }
+  delete[] threads;
+
+  double partialResult = 1.0;
+  for (unsigned int counter = 0; counter < integrableDimensions; ++counter) {
+    partialResult *= upperLimit[counter] - lowerLimit[counter];
+  }
+
+  reductionResult *= (partialResult / amountOfPoint);
+  return reductionResult;
+}
+
+\end{lstlisting}
+
+\par 4.3 Параллельная реализация std::threads. Файл: main.сpp
+
+\begin{lstlisting}[language=C++]
+// Copyright 2022 Tsyplakov Pavel
+#include <gtest/gtest.h>
+#include <math.h>
+#include <functional>
+#include <vector>
+#include "./monte_karlo.h"
+
+const int amountOfPoints = 10000;
+
+TEST(MonteKarloSequential, Test_X_On_Y) {
+  std::vector<double> upperLimit = {2, 5};
+  std::vector<double> lowerLimit = {1, 3};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) { return x[0] * x[1]; };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+TEST(MonteKarloSequential, Test_Sin_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) { return sin(x[0]); };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+TEST(MonteKarloSequential, Test_Cos_X_On_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) { return cos(x[0]) * x[0]; };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+TEST(MonteKarloSequential, Test_Cos_X_On_Sin_X_On_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) { return cos(x[0]) * sin(x[0]) * x[0]; };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+TEST(MonteKarloSequential, Test_Cos_X_On_Sin_X_On_Sin_X_On_X) {
+  std::vector<double> upperLimit = {10};
+  std::vector<double> lowerLimit = {1};
+
+  std::function<double(std::vector<double> x)> integrableFunction =
+      [](std::vector<double> x) {
+        return cos(x[0]) * sin(x[0]) * sin(x[0]) * x[0];
+      };
+
+  auto seqResult = getSequentialMonteKarlo(integrableFunction, upperLimit,
+                                           lowerLimit, amountOfPoints);
+  auto parallelResult = getParallelMonteKarlo(integrableFunction, upperLimit,
+                                              lowerLimit, amountOfPoints);
+
+  ASSERT_NEAR(seqResult, parallelResult, 4);
+}
+
+\end{lstlisting}
+
+
+\end{document}
